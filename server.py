@@ -33,18 +33,19 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
         # self.request.sendall(bytearray("OK",'utf-8'))
-        # self.request.sendall(bytearray(
-        #     """
-        #         HTTP/1.0 200 OK\n
-        #         Content-Type: text/html\n
-        #         <html>
-        #             <body>
-        #                 <h1>Hello World</h1>
-        #             </body>
-        #         </html>
-        #     """,
-        #     "utf-8"
-        # ))
+
+        # # This seems to be working
+        # REFERENCE https://stackoverflow.com/questions/47726865/html-page-not-displaying-using-python-socket-programming
+        # filename = 'www/index.html'
+        # f = open(filename, 'r')
+        # l = f.read()
+        # self.request.sendall(bytearray("HTTP/1.0 200 OK\n",'utf-8'))
+        # self.request.sendall(bytearray('Content-Type: text/html\n', 'utf-8'))
+        # self.request.send(bytearray('\n', 'utf-8'))
+        # self.request.sendall(bytearray(""+l+"", 'utf-8'))
+
+        # This works if on one line
+        self.request.sendall(bytearray("""HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><body><h1>Hello World</h1></body></html>""", "utf-8"))
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
@@ -56,3 +57,9 @@ if __name__ == "__main__":
     # Activate the server; this will keep running until you
     # interrupt the program with Ctrl-C
     server.serve_forever()
+
+# # Reading the file and sending it
+# python3 -m http.server
+# # Check against it? What do you mean?
+# GET http://127
+
