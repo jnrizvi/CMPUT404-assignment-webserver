@@ -1,6 +1,7 @@
 #  coding: utf-8 
 import socketserver
 import re
+import os
 # from PIL import Image
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
@@ -50,37 +51,51 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
         # Need to parse the self.data. Look at the path to see which file/folder should be returned. Look at HTTP method and see if its GET. POST/PUT/DELETE not supported
         # print ("Got a request of: %s\n" % self.data)
-        print(self.data)
+        # print(self.data)
 
         request_snippet = self.data.decode("utf-8").split("?")[0]
+        print(request_snippet)
 
         # Just grab the HTTP method and the file path using a regular expression
-        method_and_path = re.match(r"GET\s\/([A-Za-z]+\.[A-Za-z]+)?", request_snippet).group().split(" ")
-        print(method_and_path)
+        
+        # THIS REGEX NEEDS TO BE UPDATED TO HANDLE DEEP PATH
+        
+        match = re.match(r"GET\s\/([A-Za-z]+\.[A-Za-z]+)?\s", request_snippet)
+        if match:
+            method_and_path = match.group().split(" ")
 
-        # from self.data, extract the path to know which files should be sent
-        filename = 'www/index.html'
-        if method_and_path[1] != "/":
-            filename = "www" + method_and_path[1]
+            print(method_and_path)
 
-        # f = ""
-        # if "ico" in method_and_path[1]:
-        #     f = Image.open(filename)
-        # else:
-        f = open(filename, "r")
+            # from self.data, extract the path to know which files should be sent.
+            # If / is the path, the index.html should be the file to send
+            if method_and_path[1] == "/":
+                filename = '/index.html'            
+            else:
+                # otherwise, serve the other requested file (css, maybe favicon?)
+                filename = method_and_path[1]
 
-        l = f.read()
-    
-        self.request.sendall(bytearray("HTTP/1.1 200 OK\n",'utf-8'))
+            # print(filename)
+            # print(os.listdir("www"))
+            # Send a 404 status code if the file in the request does not match a file in the directory
+            if filename[1:] in os.listdir("www") == False:
+                self.request.sendall(bytearray("HTTP/1.1 404 FILE_NOT_FOUND\r\n", 'utf-8'))
+            else:
+                f = open("www" + filename, "r")
 
-        mimetype = "text/html"
-        if "css" in method_and_path[1]:
-            mimetype = "text/css"
+                l = f.read()
+            
+                self.request.sendall(bytearray("HTTP/1.1 200 OK\n",'utf-8'))
 
-        self.request.sendall(bytearray(f'Content-Type: {mimetype}\n', 'utf-8'))
-        self.request.send(bytearray('\n', 'utf-8'))
-        self.request.sendall(bytearray(""+l+"", 'utf-8'))
-        f.close()
+                mimetype = "text/html"
+                if "css" in filename:
+                    mimetype = "text/css"
+
+                self.request.sendall(bytearray(f'Content-Type: {mimetype}\n', 'utf-8'))
+                self.request.send(bytearray('\n', 'utf-8'))
+                self.request.sendall(bytearray(""+l+"", 'utf-8'))
+                f.close()
+        else:
+            self.request.sendall(bytearray("HTTP/1.1 404 FILE_NOT_FOUND\r\n", 'utf-8'))
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
