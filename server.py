@@ -1,5 +1,7 @@
 #  coding: utf-8 
 import socketserver
+import re
+# from PIL import Image
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -27,25 +29,58 @@ import socketserver
 # try: curl -v -X GET http://127.0.0.1:8080/
 
 
+# FROM:  https://stackoverflow.com/questions/47726865/html-page-not-displaying-using-python-socket-programming 2021-01-27 by lappet 2017
+# filename = 'static/index.html'
+# f = open(filename, 'r')
+
+# csock.sendall(str.encode("HTTP/1.0 200 OK\n",'iso-8859-1'))
+# csock.sendall(str.encode('Content-Type: text/html\n', 'iso-8859-1'))
+# csock.send(str.encode('\r\n'))
+# # send data per line
+# for l in f.readlines():
+#     print('Sent ', repr(l))
+#     csock.sendall(str.encode(""+l+"", 'iso-8859-1'))
+#     l = f.read(1024)
+# f.close()
+# END FROM
+
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        # self.request.sendall(bytearray("OK",'utf-8'))
+        # Need to parse the self.data. Look at the path to see which file/folder should be returned. Look at HTTP method and see if its GET. POST/PUT/DELETE not supported
+        # print ("Got a request of: %s\n" % self.data)
+        print(self.data)
 
-        # # This seems to be working
-        # REFERENCE https://stackoverflow.com/questions/47726865/html-page-not-displaying-using-python-socket-programming
-        # filename = 'www/index.html'
-        # f = open(filename, 'r')
-        # l = f.read()
-        # self.request.sendall(bytearray("HTTP/1.0 200 OK\n",'utf-8'))
-        # self.request.sendall(bytearray('Content-Type: text/html\n', 'utf-8'))
-        # self.request.send(bytearray('\n', 'utf-8'))
-        # self.request.sendall(bytearray(""+l+"", 'utf-8'))
+        request_snippet = self.data.decode("utf-8").split("?")[0]
 
-        # This works if on one line
-        self.request.sendall(bytearray("""HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><body><h1>Hello World</h1></body></html>""", "utf-8"))
+        # Just grab the HTTP method and the file path using a regular expression
+        method_and_path = re.match(r"GET\s\/([A-Za-z]+\.[A-Za-z]+)?", request_snippet).group().split(" ")
+        print(method_and_path)
+
+        # from self.data, extract the path to know which files should be sent
+        filename = 'www/index.html'
+        if method_and_path[1] != "/":
+            filename = "www" + method_and_path[1]
+
+        # f = ""
+        # if "ico" in method_and_path[1]:
+        #     f = Image.open(filename)
+        # else:
+        f = open(filename, "r")
+
+        l = f.read()
+    
+        self.request.sendall(bytearray("HTTP/1.1 200 OK\n",'utf-8'))
+
+        mimetype = "text/html"
+        if "css" in method_and_path[1]:
+            mimetype = "text/css"
+
+        self.request.sendall(bytearray(f'Content-Type: {mimetype}\n', 'utf-8'))
+        self.request.send(bytearray('\n', 'utf-8'))
+        self.request.sendall(bytearray(""+l+"", 'utf-8'))
+        f.close()
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
